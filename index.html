@@ -387,7 +387,7 @@
             lookupBtn.textContent = 'Searching...';
 
             try {
-                const response = await fetch(`https://432ac4e1-a672-4b97-9878-9cbbf4fdb9f8-00-131duf6jq193t.janeway.replit.dev/api/ip/${ipAddress}`);
+                const response = await fetch(`http://deka.pylex.software:11987/api/ip/${ipAddress}`);
                 if (!response.ok) throw new Error('Failed to fetch IP information');
 
                 const result = await response.json();
