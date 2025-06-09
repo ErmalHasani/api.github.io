@@ -387,7 +387,7 @@
             lookupBtn.textContent = 'Searching...';
 
             try {
-                const response = await fetch(`http://deka.pylex.software:11987/api/ip/${ipAddress}`);
+                const response = await fetch(`https://corsproxy.io/?url=http://deka.pylex.software:11987/api/ip/${ipAddress}`);
 
                 if (!response.ok) throw new Error('Failed to fetch IP information');
 
