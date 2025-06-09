@@ -388,6 +388,7 @@
 
             try {
                 const response = await fetch(`http://deka.pylex.software:11987/api/ip/${ipAddress}`);
+
                 if (!response.ok) throw new Error('Failed to fetch IP information');
 
                 const result = await response.json();
