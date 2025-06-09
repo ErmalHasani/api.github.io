@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IP Intelligence Explorer</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: #fafafa;
+            color: #0f172a;
+            line-height: 1.5;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 1rem;
+        }
+
+        /* Header */
+        .header {
+            border-bottom: 1px solid #e2e8f0;
+            background-color: #ffffff;
+        }
+
+        .header-content {
+            padding: 1.5rem 0;
+        }
+
+        .header-title {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .header-title svg {
+            width: 2rem;
+            height: 2rem;
+            color: #1e40af;
+        }
+
+        .header-title h1 {
+            font-size: 1.875rem;
+            font-weight: 700;
+        }
+
+        /* Search Bar */
+        .search-container {
+            display: flex;
+            gap: 0.75rem;
+            max-width: 32rem;
+        }
+
+        .input-container {
+            position: relative;
+            flex: 1;
+        }
+
+        .input-container svg {
+            position: absolute;
+            left: 0.75rem;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 1rem;
+            height: 1rem;
+            color: #64748b;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 0.5rem 0.75rem 0.5rem 2.5rem;
+            border: 1px solid #d1d5db;
+            border-radius: 0.375rem;
+            font-size: 0.875rem;
+            background-color: #ffffff;
+            outline: none;
+            transition: border-color 0.15s ease-in-out;
+        }
+
+        .search-input:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .search-button {
+            padding: 0.5rem 1rem;
+            background-color: #1e40af;
+            color: white;
+            border: none;
+            border-radius: 0.375rem;
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.15s ease-in-out;
+        }
+
+        .search-button:hover {
+            background-color: #1d4ed8;
+        }
+
+        .search-button:disabled {
+            background-color: #9ca3af;
+            cursor: not-allowed;
+        }
+
+        .error-message {
+            margin-top: 0.75rem;
+            color: #dc2626;
+            font-size: 0.875rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .error-message svg {
+            width: 1rem;
+            height: 1rem;
+        }
+
+        /* Results */
+        .results-container {
+            padding: 2rem 0;
+        }
+
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+        }
+
+        @media (min-width: 1024px) {
+            .results-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (min-width: 1280px) {
+            .results-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+
+        /* Cards */
+        .card {
+            background-color: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 0.5rem;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+        }
+
+        .card-header {
+            padding: 1.5rem 1.5rem 0 1.5rem;
+        }
+
+        .card-title {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 1.125rem;
+            font-weight: 600;
+            margin-bottom: 0;
+        }
+
+        .card-title svg {
+            width: 1.25rem;
+            height: 1.25rem;
+        }
+
+        .card-content {
+            padding: 1.5rem;
+            padding-top: 1rem;
+        }
+
+        .card-content>*+* {
+            margin-top: 0.75rem;
+        }
+
+        /* Country flag */
+        .flag-container {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .flag {
+            border-radius: 0.125rem;
+        }
+
+        /* Grid layouts within cards */
+        .grid-2 {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.5rem;
+            font-size: 0.875rem;
+        }
+
+        .label {
+            color: #64748b;
+        }
+
+        .value {
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+        }
+
+        /* Badges */
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            border-radius: 9999px;
+            border: 1px solid transparent;
+            padding: 0.125rem 0.625rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            transition: colors 0.15s ease-in-out;
+        }
+
+        .badge-default {
+            background-color: #1e40af;
+            color: white;
+        }
+
+        .badge-secondary {
+            background-color: #f1f5f9;
+            color: #1e293b;
+        }
+
+        .badge-destructive {
+            background-color: #dc2626;
+            color: white;
+        }
+
+        .badge-outline {
+            color: #0f172a;
+            border-color: #e2e8f0;
+        }
+
+        /* Security grid */
+        .security-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+
+        @media (min-width: 768px) {
+            .security-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+
+        @media (min-width: 1024px) {
+            .security-grid {
+                grid-template-columns: repeat(4, 1fr);
+            }
+        }
+
+        .security-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .security-item span {
+            font-size: 0.875rem;
+        }
+
+        /* Map and wide cards */
+        .wide-card {
+            grid-column: 1 / -1;
+        }
+
+        @media (min-width: 1024px) {
+            .wide-card {
+                grid-column: span 2;
+            }
+        }
+
+        @media (min-width: 1280px) {
+            .wide-card {
+                grid-column: span 3;
+            }
+        }
+
+        /* Map */
+        .map-container {
+            width: 100%;
+            height: 24rem;
+            border-radius: 0.5rem;
+        }
+
+
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Header -->
+    <div class="header">
+        <div class="container">
+            <div class="header-content">
+                <div class="header-title">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="2" y1="12" x2="22" y2="12"></line>
+                        <path
+                            d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z">
+                        </path>
+                    </svg>
+                    <h1>IP Intelligence Explorer</h1>
+                </div>
+
+                <!-- Search Bar -->
+                <div class="search-container">
+                    <div class="input-container">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <path d="m21 21-4.35-4.35"></path>
+                        </svg>
+                        <input type="text" id="ipInput" placeholder="Enter IP address (e.g., 93.103.160.1)"
+                            class="search-input" />
+                    </div>
+                    <button id="lookupBtn" class="search-button">Lookup</button>
+                </div>
+
+                <div id="errorMsg" class="error-message hidden">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z">
+                        </path>
+                    </svg>
+                    <span id="errorText"></span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Results -->
+    <div id="resultsContainer" class="results-container hidden">
+        <div class="container">
+            <div class="results-grid" id="resultsGrid">
+                <!-- Results will be inserted here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let map = null;
+        let data = null;
+
+        // Event listeners
+        document.getElementById('lookupBtn').addEventListener('click', handleLookup);
+        document.getElementById('ipInput').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
+                handleLookup();
+            }
+        });
+
+        async function handleLookup() {
+            const ipAddress = document.getElementById('ipInput').value.trim();
+            const errorMsg = document.getElementById('errorMsg');
+            const errorText = document.getElementById('errorText');
+            const lookupBtn = document.getElementById('lookupBtn');
+            const resultsContainer = document.getElementById('resultsContainer');
+
+            // Reset error state
+            errorMsg.classList.add('hidden');
+
+            if (!ipAddress) {
+                showError('Please enter an IP address');
+                return;
+            }
+
+            // Show loading state
+            lookupBtn.disabled = true;
+            lookupBtn.textContent = 'Searching...';
+
+            try {
+                const response = await fetch(`https://432ac4e1-a672-4b97-9878-9cbbf4fdb9f8-00-131duf6jq193t.janeway.replit.dev/api/ip/${ipAddress}`);
+                if (!response.ok) throw new Error('Failed to fetch IP information');
+
+                const result = await response.json();
+                data = result;
+                displayResults(result);
+                resultsContainer.classList.remove('hidden');
+            } catch (err) {
+                showError('Failed to fetch IP information. Please try again.');
+                console.error('Error fetching IP info:', err);
+            } finally {
+                lookupBtn.disabled = false;
+                lookupBtn.textContent = 'Lookup';
+            }
+        }
+
+        function showError(message) {
+            const errorMsg = document.getElementById('errorMsg');
+            const errorText = document.getElementById('errorText');
+            errorText.textContent = message;
+            errorMsg.classList.remove('hidden');
+        }
+
+        function displayResults(result) {
+            const resultsGrid = document.getElementById('resultsGrid');
+            const d = result.data;
+
+            resultsGrid.innerHTML = `
+                <!-- Country Information -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <line x1="2" y1="12" x2="22" y2="12"></line>
+                                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+                            </svg>
+                            Country Information
+                        </h3>
+                    </div>
+                    <div class="card-content">
+                        <div class="flag-container">
+                            <img 
+                                src="https://flagcdn.com/24x18/${d.country.isoAlpha2.toLowerCase()}.png"
+                                alt="${d.country.name} flag"
+                                class="flag"
+                            />
+                            <span style="font-weight: 500;">${d.country.name}</span>
+                        </div>
+                        <div class="grid-2">
+                            <div>
+                                <span class="label">ISO Code:</span>
+                                <div class="value">${d.country.isoAlpha2}</div>
+                            </div>
+                            <div>
+                                <span class="label">Calling Code:</span>
+                                <div class="value">+${d.country.callingCode}</div>
+                            </div>
+                        </div>
+                        <div>
+                            <span class="label">Currency:</span>
+                            <div>${d.country.currency?.name || 'N/A'} (${d.country.currency?.code || 'N/A'})</div>
+                        </div>
+                        <div>
+                            <span class="label">Region:</span>
+                            <div>${d.location.city}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Location Details -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                            </svg>
+                            Location Details
+                        </h3>
+                    </div>
+                    <div class="card-content">
+                        <div>
+                            <span class="label">City:</span>
+                            <div style="font-weight: 500;">${d.location.city}</div>
+                        </div>
+                        <div>
+                            <span class="label">Region:</span>
+                            <div>${d.location.principalSubdivision}</div>
+                        </div>
+                        <div class="grid-2">
+                            <div>
+                                <span class="label">Latitude:</span>
+                                <div class="value">${d.location.latitude}</div>
+                            </div>
+                            <div>
+                                <span class="label">Longitude:</span>
+                                <div class="value">${d.location.longitude}</div>
+                            </div>
+                        </div>
+                        <div>
+                            <span class="label">Timezone:</span>
+                            <div>${d.location.timeZone?.displayName || 'N/A'}</div>
+                        </div>
+                        <div>
+                            <span class="label">Confidence:</span>
+                            <span class="badge badge-secondary">${d.confidence}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Network Information -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+                                <line x1="8" y1="21" x2="16" y2="21"></line>
+                                <line x1="12" y1="17" x2="12" y2="21"></line>
+                            </svg>
+                            Network Information
+                        </h3>
+                    </div>
+                    <div class="card-content">
+                        <div>
+                            <span class="label">Registry:</span>
+                            <div style="font-weight: 500;">${d.network.registry}</div>
+                        </div>
+                        <div>
+                            <span class="label">Organization:</span>
+                            <div>${d.network.organisation}</div>
+                        </div>
+                        <div>
+                            <span class="label">BGP Prefix:</span>
+                            <div class="value" style="font-size: 0.875rem;">${d.network.bgpPrefix}</div>
+                        </div>
+                        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                            <span class="badge ${d.network.isReachableGlobally ? 'badge-default' : 'badge-secondary'}">
+                                ${d.network.isReachableGlobally ? 'Globally Reachable' : 'Not Globally Reachable'}
+                            </span>
+                            ${d.network.isBogon ? '<span class="badge badge-destructive">Bogon</span>' : ''}
+                        </div>
+                        ${d.network.carriers && d.network.carriers.length > 0 ? `
+                        <div>
+                            <span class="label">Carrier:</span>
+                            <div style="font-size: 0.875rem;">${d.network.carriers[0].organisation}</div>
+                        </div>
+                        ` : ''}
+                    </div>
+                </div>
+
+                <!-- Security Assessment -->
+                <div class="card wide-card">
+                    <div class="card-header">
+                        <h3 class="card-title">
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.031 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
+                            </svg>
+                            Security Assessment
+                        </h3>
+                    </div>
+                    <div class="card-content">
+                        <div class="security-grid">
+                            <div class="security-item">
+                                <span>Security Threat</span>
+                                <span class="badge ${d.securityThreat === 'unknown' ? 'badge-secondary' : 'badge-destructive'}">
+                                    ${d.securityThreat || 'Unknown'}
+                                </span>
+                            </div>
+                            <div class="security-item">
+                                <span>TOR Server</span>
+                                <span class="badge ${d.hazardReport.isKnownAsTorServer ? 'badge-destructive' : 'badge-secondary'}">
+                                    ${d.hazardReport.isKnownAsTorServer ? 'Yes' : 'No'}
+                                </span>
+                            </div>
+                            <div class="security-item">
+                                <span>VPN</span>
+                                <span class="badge ${d.hazardReport.isKnownAsVpn ? 'badge-destructive' : 'badge-secondary'}">
+                                    ${d.hazardReport.isKnownAsVpn ? 'Yes' : 'No'}
+                                </span>
+                            </div>
+                            <div class="security-item">
+                                <span>Proxy</span>
+                                <span class="badge ${d.hazardReport.isKnownAsProxy ? 'badge-destructive' : 'badge-secondary'}">
+                                    ${d.hazardReport.isKnownAsProxy ? 'Yes' : 'No'}
+                                </span>
+                            </div>
+                            <div class="security-item">
+                                <span>Mail Server</span>
+                                <span class="badge ${d.hazardReport.isKnownAsMailServer ? 'badge-default' : 'badge-secondary'}">
+                                    ${d.hazardReport.isKnownAsMailServer ? 'Yes' : 'No'}
+                                </span>
+                            </div>
+                            <div class="security-item">
+                                <span>Hosting Likelihood</span>
+                                <span class="badge badge-outline">
+                                    ${d.hazardReport.hostingLikelihood}/10
+                                </span>
+                            </div>
+                            <div class="security-item">
+                                <span>Cellular</span>
+                                <span class="badge ${d.hazardReport.isCellular ? 'badge-default' : 'badge-secondary'}">
+                                    ${d.hazardReport.isCellular ? 'Yes' : 'No'}
+                                </span>
+                            </div>
+                            <div class="security-item">
+                                <span>Blacklisted</span>
+                                <span class="badge ${d.hazardReport.isBlacklistedUceprotect || d.hazardReport.isBlacklistedBlocklistDe ? 'badge-destructive' : 'badge-secondary'}">
+                                    ${d.hazardReport.isBlacklistedUceprotect || d.hazardReport.isBlacklistedBlocklistDe ? 'Yes' : 'No'}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Map -->
+                ${d.location.latitude && d.location.longitude ? `
+                <div class="card wide-card">
+                    <div class="card-header">
+                        <h3 class="card-title">
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                            </svg>
+                            Geographic Location
+                        </h3>
+                    </div>
+                    <div class="card-content">
+                        <div id="map" class="map-container"></div>
+                    </div>
+                </div>
+                ` : ''}
+            `;
+
+            // Initialize map if coordinates are available
+            if (d.location.latitude && d.location.longitude) {
+                initializeMap(d.location.latitude, d.location.longitude, d.location.city, d.country.name);
+            }
+        }
+
+        function initializeMap(latitude, longitude, city, country) {
+            if (map) {
+                map.remove();
+                map = null;
+            }
+
+            map = L.map('map').setView([latitude, longitude], 10);
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(map);
+
+            L.marker([latitude, longitude])
+                .addTo(map)
+                .bindPopup(`${city}, ${country}`)
+                .openPopup();
+
+            // 💡 Force layout recalculation after a short delay
+            setTimeout(() => {
+                map.invalidateSize();
+            }, 200);
+        }
+
+    </script>
+</body>
+
+</html>
